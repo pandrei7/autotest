@@ -215,7 +215,6 @@ int main(int argc, char* argv[])
             // Show test result
             cout << "Test #" << i << ": " << 
                 (IsTestCorrect(test_file_prefix, i) ? "CORRECT" : "wrong") << "\n\n";
-            cout.flush();
         }
     } catch(const exception &e) {
         cerr << "An error occured during testing\n";
