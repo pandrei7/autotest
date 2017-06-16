@@ -21,7 +21,7 @@ inline bool ends_with(const string &str, const string &ending)
 }
 
 // Runs a process and waits for it to stop before continuing
-void RunAndWait(const string &process, const string &parameters)
+void RunAndWait(const string &process, const string &parameters = "")
 {
     SHELLEXECUTEINFO sh_exec_info = {0};
     sh_exec_info.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -108,8 +108,8 @@ inline string output_filename(const string &prefix)
     return prefix + ".out";
 }
 
-// Checks if a certain test was solved correcly
-bool IsTestCorrect(const string &prefix, int test_number)
+// Checks if a certain test was solved correcly and returns the result as a message
+string CheckTest(const string &prefix, int test_number)
 {
     ifstream user_fin(output_filename(prefix));
     ifstream correct_fin(output_filename(prefix, test_number));
@@ -132,23 +132,24 @@ bool IsTestCorrect(const string &prefix, int test_number)
 
         ++line_number;
         if (user_line != correct_line) {
-            cout << "line #" << line_number << "\n";
-            cout << "user line:\t" << user_line << "\n";
-            cout << "correct line:\t" << correct_line << "\n";
-            return false;
+            stringstream message_stream;
+            message_stream << "wrong\n";
+            message_stream << "line #" << line_number << "\n";
+            message_stream << "user line:\t" << user_line << "\n";
+            message_stream << "correct line:\t" << correct_line << "\n";
+            return message_stream.str();
         }
     }
 
     if (user_fin.eof() && !correct_fin.eof()) {
-        cout << "user output ended too early\n";
-        return false;
+        return "wrong: user output ended too early\n";
     }
 
     if (!user_fin.eof() && correct_fin.eof()) {
-        cout << "user ouput ended too late\n";
-        return false;
+        return "wrong: user ouput ended too late\n";
     }
-    return true;
+
+    return "CORRECT\n";
 }
 
 // Copies the input of a certain test into the user input file
@@ -168,6 +169,23 @@ void CopyTest(const string &prefix, int test_number)
     while (getline(fin, line)) {
         fout << line << "\n";
     }
+}
+
+// Execute a certain test and return a message describing its result
+string PerformTest(const string &test_file_prefix, int test_number)
+{
+    // Copy the test data into the user input file
+    CopyTest(test_file_prefix, test_number);
+
+    // Start the program
+    RunAndWait(kExecutableName);
+
+    // Get test result as a message
+    auto result = CheckTest(test_file_prefix, test_number);
+
+    stringstream message_stream;
+    message_stream << "Test #" << test_number << ": " << result;
+    return message_stream.str();
 }
 
 int main(int argc, char* argv[])
@@ -206,15 +224,8 @@ int main(int argc, char* argv[])
 
     try {
         for (int i = 1; i <= tests; ++i) {
-            // Copy the current test data into the input file
-            CopyTest(test_file_prefix, i);
-
-            // Start the program
-            RunAndWait(kExecutableName, "");
-
-            // Show test result
-            cout << "Test #" << i << ": " << 
-                (IsTestCorrect(test_file_prefix, i) ? "CORRECT" : "wrong") << "\n\n";
+            auto message = PerformTest(test_file_prefix, i);
+            cout << message << "\n";
         }
     } catch(const exception &e) {
         cerr << "An error occured during testing\n";
